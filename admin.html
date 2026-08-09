@@ -169,6 +169,55 @@
     });
   }
 
+
+  function makeRequestId(){
+    return 'rq_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12);
+  }
+
+  function sleep(ms){
+    return new Promise(function(resolve){ setTimeout(resolve, ms); });
+  }
+
+  async function pollWriteResult(requestId){
+    for(let i = 0; i < 30; i++){
+      const result = await apiCall({
+        route:'writeResult',
+        requestId:requestId
+      });
+
+      if(result && !result.pending){
+        if(result.ok) return true;
+        throw new Error(result.error || 'บันทึกไม่สำเร็จ');
+      }
+
+      await sleep(350);
+    }
+
+    throw new Error('ระบบบันทึกช้าเกินไป กรุณาลองใหม่');
+  }
+
+  async function apiWrite(params){
+    const requestId = makeRequestId();
+    const body = new URLSearchParams();
+
+    body.set('requestId', requestId);
+    Object.keys(params || {}).forEach(function(key){
+      const value = params[key];
+      if(value !== undefined && value !== null){
+        body.set(key, String(value));
+      }
+    });
+
+    await fetch(API_URL, {
+      method:'POST',
+      mode:'no-cors',
+      cache:'no-store',
+      body:body
+    });
+
+    return pollWriteResult(requestId);
+  }
+
   let state = null;
   let timer = null;
   let busy = false;
@@ -186,7 +235,10 @@
     const p = payload || {};
     Object.keys(p).forEach(function(key){ params[key] = p[key]; });
 
-    apiCall(params)
+    apiWrite(params)
+      .then(function(){
+        return apiCall({route:'adminState'});
+      })
       .then(function(s){
         busy=false;
         render(s);
