@@ -117,19 +117,18 @@
 
 <script>
 
-
-  const API_URL = "https://script.google.com/macros/s/AKfycbw-9l6vzgGAFh9oNvW4-WwWXzClmexqsFQZnoAcsXewQEBtfG8XcICIRPSw4uN4iSRl/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbz9W5oCV_SuTF0FA-eD-OrMuSxu32TXR7K5KERN-CrUmIYnnovazKbTz5xZYKLaB-zBCA/exec";
   let apiSeq = 0;
 
-  function apiRead(params) {
+  function apiCall(params) {
     return new Promise(function(resolve, reject) {
       const callback = '__poolcb_' + Date.now() + '_' + (++apiSeq);
       const script = document.createElement('script');
-      let done = false;
+      let finished = false;
 
       function cleanup() {
-        if (done) return;
-        done = true;
+        if (finished) return;
+        finished = true;
         clearTimeout(timeout);
         try { delete window[callback]; } catch (e) { window[callback] = undefined; }
         if (script.parentNode) script.parentNode.removeChild(script);
@@ -137,8 +136,11 @@
 
       window[callback] = function(response) {
         cleanup();
-        if (response && response.ok) resolve(response.data);
-        else reject(new Error(response && response.error ? response.error : 'เกิดข้อผิดพลาด'));
+        if (response && response.ok) {
+          resolve(response.data);
+        } else {
+          reject(new Error(response && response.error ? response.error : 'เกิดข้อผิดพลาด'));
+        }
       };
 
       const query = new URLSearchParams();
@@ -167,51 +169,13 @@
     });
   }
 
-  function apiWrite(params) {
-    const requestId =
-      'r_' + Date.now() + '_' +
-      Math.random().toString(36).slice(2, 12);
-
-    const body = new URLSearchParams();
-    body.set('requestId', requestId);
-
-    Object.keys(params || {}).forEach(function(key) {
-      const value = params[key];
-      if (value !== undefined && value !== null) body.set(key, String(value));
-    });
-
-    return fetch(API_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
-      body: body.toString()
-    }).then(function() {
-      return pollWriteResult(requestId, 0);
-    }).then(function(result) {
-      if (result && result.ok) return true;
-      throw new Error(result && result.error ? result.error : 'บันทึกไม่สำเร็จ');
-    });
-  }
-
-  function pollWriteResult(requestId, attempt) {
-    return apiRead({
-      route:'writeResult',
-      requestId:requestId
-    }).then(function(result) {
-      if (result && !result.pending) return result;
-      if (attempt >= 15) throw new Error('ระบบตอบกลับช้าเกินไป กรุณาลองใหม่');
-      return new Promise(function(resolve) { setTimeout(resolve, 250); })
-        .then(function() { return pollWriteResult(requestId, attempt + 1); });
-    });
-  }
-
   let state = null;
   let timer = null;
   let busy = false;
 
   function refresh(){
     clearTimeout(timer);
-    apiRead({route:'adminState'}).then(render).catch(error);
+    apiCall({route:'adminState'}).then(render).catch(error);
   }
 
   function action(name, payload, successMsg){
@@ -222,11 +186,11 @@
     const p = payload || {};
     Object.keys(p).forEach(function(key){ params[key] = p[key]; });
 
-    apiWrite(params)
-      .then(function(){
+    apiCall(params)
+      .then(function(s){
         busy=false;
+        render(s);
         if(successMsg) toast(successMsg);
-        refresh();
       })
       .catch(error);
   }
