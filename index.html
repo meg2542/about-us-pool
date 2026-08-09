@@ -123,7 +123,7 @@
     </section>
   </main>
 
-  <div class="foot">ABOUT US • POOL QUEUE V1</div>
+  <div class="foot">ABOUT US • POOL QUEUE V1.4</div>
 </div>
 
 <div id="toast" class="toast"></div>
@@ -180,6 +180,55 @@
 
       document.body.appendChild(script);
     });
+  }
+
+
+  function makeRequestId(){
+    return 'rq_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12);
+  }
+
+  function sleep(ms){
+    return new Promise(function(resolve){ setTimeout(resolve, ms); });
+  }
+
+  async function pollWriteResult(requestId){
+    for(let i = 0; i < 30; i++){
+      const result = await apiCall({
+        route:'writeResult',
+        requestId:requestId
+      });
+
+      if(result && !result.pending){
+        if(result.ok) return true;
+        throw new Error(result.error || 'บันทึกไม่สำเร็จ');
+      }
+
+      await sleep(350);
+    }
+
+    throw new Error('ระบบบันทึกช้าเกินไป กรุณาลองใหม่');
+  }
+
+  async function apiWrite(params){
+    const requestId = makeRequestId();
+    const body = new URLSearchParams();
+
+    body.set('requestId', requestId);
+    Object.keys(params || {}).forEach(function(key){
+      const value = params[key];
+      if(value !== undefined && value !== null){
+        body.set(key, String(value));
+      }
+    });
+
+    await fetch(API_URL, {
+      method:'POST',
+      mode:'no-cors',
+      cache:'no-store',
+      body:body
+    });
+
+    return pollWriteResult(requestId);
   }
 
   let state = null;
@@ -277,40 +326,55 @@
     const name = document.getElementById('nameInput').value.trim();
     if(!name){ toast('กรุณาใส่ชื่อเล่น'); return; }
     busy = true; setButtons(true);
-    apiCall({
+    apiWrite({
       route:'customerAction',
       clientToken:getToken(),
       action:'JOIN',
       name:name
-    }).then(render).catch(serverError);
+    })
+    .then(function(){
+      return apiCall({route:'publicState', clientToken:getToken()});
+    })
+    .then(render)
+    .catch(serverError);
   }
 
   function cancelQueue(){
     if(busy) return;
     if(!confirm('ยืนยันยกเลิกคิวของคุณ?')) return;
     busy = true; setButtons(true);
-    apiCall({
+    apiWrite({
       route:'customerAction',
       clientToken:getToken(),
       action:'CANCEL'
-    }).then(function(s){
+    })
+    .then(function(){
+      return apiCall({route:'publicState', clientToken:getToken()});
+    })
+    .then(function(s){
       lastStatus = null;
       render(s);
       toast('ยกเลิกคิวแล้ว');
-    }).catch(serverError);
+    })
+    .catch(serverError);
   }
 
   function ackQueue(){
     if(busy) return;
     busy = true; setButtons(true);
-    apiCall({
+    apiWrite({
       route:'customerAction',
       clientToken:getToken(),
       action:'ACK'
-    }).then(function(s){
+    })
+    .then(function(){
+      return apiCall({route:'publicState', clientToken:getToken()});
+    })
+    .then(function(s){
       render(s);
       toast('แจ้งพนักงานแล้วว่ากำลังไป');
-    }).catch(serverError);
+    })
+    .catch(serverError);
   }
 
   function startCountdown(sec){
