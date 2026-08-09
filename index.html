@@ -130,19 +130,18 @@
 
 <script>
 
-
-  const API_URL = "https://script.google.com/macros/s/AKfycbw-9l6vzgGAFh9oNvW4-WwWXzClmexqsFQZnoAcsXewQEBtfG8XcICIRPSw4uN4iSRl/exec";
+  const API_URL = "https://script.google.com/macros/s/AKfycbz9W5oCV_SuTF0FA-eD-OrMuSxu32TXR7K5KERN-CrUmIYnnovazKbTz5xZYKLaB-zBCA/exec";
   let apiSeq = 0;
 
-  function apiRead(params) {
+  function apiCall(params) {
     return new Promise(function(resolve, reject) {
       const callback = '__poolcb_' + Date.now() + '_' + (++apiSeq);
       const script = document.createElement('script');
-      let done = false;
+      let finished = false;
 
       function cleanup() {
-        if (done) return;
-        done = true;
+        if (finished) return;
+        finished = true;
         clearTimeout(timeout);
         try { delete window[callback]; } catch (e) { window[callback] = undefined; }
         if (script.parentNode) script.parentNode.removeChild(script);
@@ -150,8 +149,11 @@
 
       window[callback] = function(response) {
         cleanup();
-        if (response && response.ok) resolve(response.data);
-        else reject(new Error(response && response.error ? response.error : 'เกิดข้อผิดพลาด'));
+        if (response && response.ok) {
+          resolve(response.data);
+        } else {
+          reject(new Error(response && response.error ? response.error : 'เกิดข้อผิดพลาด'));
+        }
       };
 
       const query = new URLSearchParams();
@@ -180,44 +182,6 @@
     });
   }
 
-  function apiWrite(params) {
-    const requestId =
-      'r_' + Date.now() + '_' +
-      Math.random().toString(36).slice(2, 12);
-
-    const body = new URLSearchParams();
-    body.set('requestId', requestId);
-
-    Object.keys(params || {}).forEach(function(key) {
-      const value = params[key];
-      if (value !== undefined && value !== null) body.set(key, String(value));
-    });
-
-    return fetch(API_URL, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: {'Content-Type':'application/x-www-form-urlencoded;charset=UTF-8'},
-      body: body.toString()
-    }).then(function() {
-      return pollWriteResult(requestId, 0);
-    }).then(function(result) {
-      if (result && result.ok) return true;
-      throw new Error(result && result.error ? result.error : 'บันทึกไม่สำเร็จ');
-    });
-  }
-
-  function pollWriteResult(requestId, attempt) {
-    return apiRead({
-      route:'writeResult',
-      requestId:requestId
-    }).then(function(result) {
-      if (result && !result.pending) return result;
-      if (attempt >= 15) throw new Error('ระบบตอบกลับช้าเกินไป กรุณาลองใหม่');
-      return new Promise(function(resolve) { setTimeout(resolve, 250); })
-        .then(function() { return pollWriteResult(requestId, attempt + 1); });
-    });
-  }
-
   let state = null;
   let timer = null;
   let countdownTimer = null;
@@ -242,7 +206,7 @@
 
   function refresh(){
     clearTimeout(timer);
-    apiRead({
+    apiCall({
       route:'publicState',
       clientToken:getToken()
     }).then(render).catch(serverError);
@@ -313,39 +277,39 @@
     const name = document.getElementById('nameInput').value.trim();
     if(!name){ toast('กรุณาใส่ชื่อเล่น'); return; }
     busy = true; setButtons(true);
-    apiWrite({
+    apiCall({
       route:'customerAction',
       clientToken:getToken(),
       action:'JOIN',
       name:name
-    }).then(refresh).catch(serverError);
+    }).then(render).catch(serverError);
   }
 
   function cancelQueue(){
     if(busy) return;
     if(!confirm('ยืนยันยกเลิกคิวของคุณ?')) return;
     busy = true; setButtons(true);
-    apiWrite({
+    apiCall({
       route:'customerAction',
       clientToken:getToken(),
       action:'CANCEL'
-    }).then(function(){
+    }).then(function(s){
       lastStatus = null;
+      render(s);
       toast('ยกเลิกคิวแล้ว');
-      refresh();
     }).catch(serverError);
   }
 
   function ackQueue(){
     if(busy) return;
     busy = true; setButtons(true);
-    apiWrite({
+    apiCall({
       route:'customerAction',
       clientToken:getToken(),
       action:'ACK'
-    }).then(function(){
+    }).then(function(s){
+      render(s);
       toast('แจ้งพนักงานแล้วว่ากำลังไป');
-      refresh();
     }).catch(serverError);
   }
 
