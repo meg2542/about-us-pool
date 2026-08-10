@@ -259,6 +259,7 @@
           </div>
           <div class="push-actions">
             <button id="pushBtnJoin" class="primary" onclick="enablePush()">เปิดแจ้งเตือน</button>
+            <button id="pushTestBtnJoin" class="push-secondary hidden" onclick="testPush()">ทดสอบแจ้งเตือน</button>
           </div>
           <div id="iosStepsJoin" class="ios-steps hidden">
             iPhone: กดปุ่มแชร์ <b>□↑</b> → <b>เพิ่มไปยังหน้าจอโฮม</b> → เปิด ABOUT US POOL จากไอคอนที่เพิ่ม แล้วกด “เปิดแจ้งเตือน” ก่อนรับคิว
@@ -308,7 +309,7 @@
           </div>
           <div class="push-actions">
             <button id="pushBtnMine" class="primary" onclick="enablePush()">เปิดแจ้งเตือน</button>
-            <button id="pushTestBtn" class="push-secondary hidden" onclick="testPush()">ทดสอบ</button>
+            <button id="pushTestBtnMine" class="push-secondary hidden" onclick="testPush()">ทดสอบแจ้งเตือน</button>
           </div>
           <div id="iosStepsMine" class="ios-steps hidden">
             ถ้ารับคิวจาก Safari ไปแล้ว แนะนำใช้หน้านี้ต่อจนจบคิวนี้ ครั้งถัดไปให้เปิดจากไอคอนหน้าจอโฮมเพื่อรับ Push ตอนล็อกจอ
@@ -321,7 +322,7 @@
       </section>
     </main>
 
-    <div class="footer">ABOUT US • POOL QUEUE V1.7.0 PUSH</div>
+    <div class="footer">ABOUT US • POOL QUEUE V1.7.1 PUSH FIX</div>
   </div>
   <div id="toast" class="toast"></div>
 
@@ -338,6 +339,9 @@
   let pushInitStarted = false;
   let pushReady = false;
   let oneSignalRef = null;
+  let refreshInFlight = false;
+  let refreshRetryMs = 2000;
+  let countdownDeadline = 0;
 
   function getToken(){
     let t = localStorage.getItem('aboutus_pool_token');
@@ -493,8 +497,24 @@
       if(steps) steps.classList.toggle('hidden',!iosBrowser);
     });
 
-    const testBtn=document.getElementById('pushTestBtn');
-    if(testBtn) testBtn.classList.toggle('hidden',!active);
+    ['pushTestBtnJoin','pushTestBtnMine'].forEach(function(id){
+      const testBtn=document.getElementById(id);
+      if(testBtn) testBtn.classList.toggle('hidden',!active);
+    });
+  }
+
+  async function waitForPushSubscription(OneSignal, timeoutMs){
+    const start=Date.now();
+    const timeout=Number(timeoutMs||8000);
+    while(Date.now()-start<timeout){
+      try{
+        if(OneSignal.User.PushSubscription.optedIn && OneSignal.User.PushSubscription.id){
+          return true;
+        }
+      }catch(e){}
+      await new Promise(resolve=>setTimeout(resolve,250));
+    }
+    return false;
   }
 
   function enablePush(){
@@ -527,7 +547,13 @@
         await OneSignal.Notifications.requestPermission();
         if(OneSignal.Notifications.permission){
           await OneSignal.User.PushSubscription.optIn();
-          toast('เปิดแจ้งเตือนแล้ว 🔔');
+          await OneSignal.login(pushExternalId());
+          const ready=await waitForPushSubscription(OneSignal,8000);
+          if(ready){
+            toast('เปิดแจ้งเตือนแล้ว 🔔 กดทดสอบได้เลย');
+          }else{
+            toast('อนุญาตแล้ว แต่กำลังลงทะเบียนเครื่อง กรุณารอแล้วกดทดสอบอีกครั้ง');
+          }
         }else{
           toast('ยังไม่ได้อนุญาตการแจ้งเตือน');
         }
@@ -541,11 +567,25 @@
 
   async function testPush(){
     if(busy)return;
+    if(!pushReady||!oneSignalRef){
+      toast('ระบบแจ้งเตือนยังไม่พร้อม กรุณารอสักครู่');
+      return;
+    }
+    try{
+      if(!oneSignalRef.Notifications.permission || !oneSignalRef.User.PushSubscription.optedIn){
+        toast('กรุณากดเปิดแจ้งเตือนและอนุญาตก่อน');
+        return;
+      }
+      if(!oneSignalRef.User.PushSubscription.id){
+        toast('ยังลงทะเบียนเครื่องไม่เสร็จ กรุณารอ 2–3 วินาทีแล้วลองใหม่');
+        return;
+      }
+    }catch(e){}
     busy=true;setBusy(true);
     try{
       const s=await apiWrite({route:'customerAction',clientToken:getToken(),action:'TEST_PUSH'});
       render(s);
-      toast('ส่งแจ้งเตือนทดสอบแล้ว');
+      toast('ส่งแจ้งเตือนทดสอบแล้ว กรุณาดู Notification');
     }catch(e){serverError(e)}
   }
 
@@ -556,10 +596,36 @@
     toast(err&&err.message?err.message:'เกิดข้อผิดพลาด กรุณาลองใหม่');
   }
 
-  function refresh(){
+  function scheduleRefresh(ms){
     clearTimeout(timer);
+    if(document.hidden) return;
+    timer=setTimeout(refresh,Math.max(300,Number(ms||2500)));
+  }
+
+  function refresh(force){
+    clearTimeout(timer);
+    if(document.hidden&&!force) return;
+    if(refreshInFlight) return;
+
+    refreshInFlight=true;
     apiCall({route:'publicState',clientToken:getToken()})
-      .then(render).catch(serverError);
+      .then(function(s){
+        refreshInFlight=false;
+        refreshRetryMs=2000;
+        render(s);
+      })
+      .catch(function(err){
+        refreshInFlight=false;
+        busy=false;
+        setBusy(false);
+
+        // A transient network/background failure must not stop auto refresh.
+        if(!state&&!document.hidden){
+          toast(err&&err.message?err.message:'เชื่อมต่อระบบคิวไม่สำเร็จ');
+        }
+        scheduleRefresh(refreshRetryMs);
+        refreshRetryMs=Math.min(10000,Math.round(refreshRetryMs*1.5));
+      });
   }
 
   function render(s){
@@ -637,9 +703,8 @@
       lastStatus=mine.status;
     }
 
-    clearTimeout(timer);
     const refreshMs = mine ? (mine.status==='CALLED' ? 1500 : 2500) : 3000;
-    timer=setTimeout(refresh,refreshMs);
+    scheduleRefresh(refreshMs);
   }
 
   async function joinQueue(){
@@ -675,12 +740,12 @@
 
   function startCountdown(sec){
     clearInterval(countdownTimer);
-    let remain=Math.max(0,Number(sec||0));
+    countdownDeadline=Date.now()+Math.max(0,Number(sec||0))*1000;
     const el=document.getElementById('countdown');
     function draw(){
+      const remain=Math.max(0,Math.ceil((countdownDeadline-Date.now())/1000));
       const m=Math.floor(remain/60),s=remain%60;
       el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
-      if(remain>0)remain--;
     }
     draw();countdownTimer=setInterval(draw,1000);
   }
@@ -711,7 +776,22 @@
   }
 
   document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')joinQueue()});
-  refresh();
+
+  // iPhone/Safari suspends timers and network work while backgrounded.
+  // Refresh immediately when the page/app becomes active again.
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){
+      clearTimeout(timer);
+    }else{
+      refresh(true);
+      updatePushUi();
+    }
+  });
+  window.addEventListener('pageshow',function(){refresh(true)});
+  window.addEventListener('focus',function(){refresh(true)});
+  window.addEventListener('online',function(){refresh(true)});
+
+  refresh(true);
 </script>
 </body>
 </html>
