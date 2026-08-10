@@ -113,7 +113,6 @@
   </section>
 </main>
 
-<iframe id="poolWriteFrame" name="poolWriteFrame" style="display:none" title="background request"></iframe>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -171,58 +170,9 @@
   }
 
 
-  function makeRequestId(){
-    return 'rq_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12);
-  }
 
-  function sleep(ms){
-    return new Promise(function(resolve){ setTimeout(resolve, ms); });
-  }
-
-  async function pollWriteResult(requestId){
-    for(let i = 0; i < 30; i++){
-      const result = await apiCall({
-        route:'writeResult',
-        requestId:requestId
-      });
-
-      if(result && !result.pending){
-        if(result.ok) return true;
-        throw new Error(result.error || 'บันทึกไม่สำเร็จ');
-      }
-
-      await sleep(350);
-    }
-
-    throw new Error('ระบบบันทึกช้าเกินไป กรุณาลองใหม่');
-  }
-
-  function submitFormPost(params, requestId){
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = API_URL;
-    form.target = 'poolWriteFrame';
-    form.style.display = 'none';
-
-    const all = Object.assign({requestId:requestId}, params || {});
-    Object.keys(all).forEach(function(key){
-      const input = document.createElement('input');
-      input.type = 'hidden';
-      input.name = key;
-      input.value = String(all[key] == null ? '' : all[key]);
-      form.appendChild(input);
-    });
-
-    document.body.appendChild(form);
-    form.submit();
-    setTimeout(function(){ form.remove(); }, 800);
-  }
-
-  async function apiWrite(params){
-    const requestId = makeRequestId();
-    submitFormPost(params, requestId);
-    await sleep(250);
-    return pollWriteResult(requestId);
+  function apiWrite(params){
+    return apiCall(params);
   }
 
   let state = null;
@@ -243,9 +193,6 @@
     Object.keys(p).forEach(function(key){ params[key] = p[key]; });
 
     apiWrite(params)
-      .then(function(){
-        return apiCall({route:'adminState'});
-      })
       .then(function(s){
         busy=false;
         render(s);
@@ -311,14 +258,27 @@
     }
 
     clearTimeout(timer);
-    timer=setTimeout(refresh, 5000);
+    timer=setTimeout(refresh, 3000);
   }
 
   function makeBtn(text, cls, fn){
     const b=document.createElement('button'); b.textContent=text;b.className=cls;b.onclick=fn;return b;
   }
 
-  function toggleOpen(){ action('SET_OPEN',{isOpen:!state.isOpen}, state.isOpen?'ปิดรับคิวแล้ว':'เปิดรับคิวแล้ว'); }
+  function toggleOpen(){
+    if(!state || busy) return;
+    const nextOpen = !state.isOpen;
+    const oldOpen = state.isOpen;
+
+    // Optimistic UI: respond immediately on screen.
+    state.isOpen = nextOpen;
+    document.getElementById('openDot').classList.toggle('open', nextOpen);
+    document.getElementById('openText').textContent = nextOpen ? 'เปิดรับคิว' : 'ปิดรับคิว';
+    document.getElementById('toggleBtn').textContent = nextOpen ? '⏸ ปิดรับคิวชั่วคราว' : '▶ เปิดรับคิว';
+    document.getElementById('toggleBtn').className = nextOpen ? 'warning' : 'primary';
+
+    action('SET_OPEN',{isOpen:nextOpen}, nextOpen?'เปิดรับคิวแล้ว':'ปิดรับคิวแล้ว');
+  }
   function addManual(){
     const el=document.getElementById('manualName');const name=el.value.trim();
     if(!name){toast('กรุณาใส่ชื่อเล่น');return;}
@@ -351,6 +311,6 @@
 
   refresh();
 </script>
-<div style="position:fixed;right:10px;bottom:8px;color:#33443a;font:10px system-ui">V1.5</div>
+<div style="position:fixed;right:10px;bottom:8px;color:#33443a;font:10px system-ui">V1.6</div>
 </body>
 </html>
