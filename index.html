@@ -264,10 +264,8 @@
       </section>
     </main>
 
-    <div class="footer">ABOUT US • POOL QUEUE V1.5</div>
+    <div class="footer">ABOUT US • POOL QUEUE V1.6</div>
   </div>
-
-  <iframe id="poolWriteFrame" name="poolWriteFrame" class="hidden" title="background request"></iframe>
   <div id="toast" class="toast"></div>
 
 <script>
@@ -326,50 +324,9 @@
     });
   }
 
-  function makeRequestId(){
-    return 'rq_'+Date.now()+'_'+Math.random().toString(36).slice(2,12);
-  }
 
-  function sleep(ms){return new Promise(r=>setTimeout(r,ms))}
-
-  async function pollWriteResult(requestId){
-    for(let i=0;i<45;i++){
-      const result=await apiCall({route:'writeResult',requestId:requestId});
-      if(result&&!result.pending){
-        if(result.ok)return true;
-        throw new Error(result.error||'บันทึกไม่สำเร็จ');
-      }
-      await sleep(300);
-    }
-    throw new Error('ระบบบันทึกช้าเกินไป กรุณาลองใหม่');
-  }
-
-  function submitFormPost(params,requestId){
-    const form=document.createElement('form');
-    form.method='POST';
-    form.action=API_URL;
-    form.target='poolWriteFrame';
-    form.style.display='none';
-
-    const all=Object.assign({requestId:requestId},params||{});
-    Object.keys(all).forEach(function(k){
-      const input=document.createElement('input');
-      input.type='hidden';
-      input.name=k;
-      input.value=String(all[k]??'');
-      form.appendChild(input);
-    });
-
-    document.body.appendChild(form);
-    form.submit();
-    setTimeout(()=>form.remove(),800);
-  }
-
-  async function apiWrite(params){
-    const requestId=makeRequestId();
-    submitFormPost(params,requestId);
-    await sleep(250);
-    return pollWriteResult(requestId);
+  function apiWrite(params){
+    return apiCall(params);
   }
 
   function serverError(err){
@@ -457,7 +414,7 @@
     }
 
     clearTimeout(timer);
-    timer=setTimeout(refresh,mine&&mine.status==='CALLED'?3000:8000);
+    timer=setTimeout(refresh,mine&&mine.status==='CALLED'?2500:5000);
   }
 
   async function joinQueue(){
@@ -466,8 +423,7 @@
     if(!name){toast('กรุณาใส่ชื่อเล่น');return}
     busy=true;setBusy(true);
     try{
-      await apiWrite({route:'customerAction',clientToken:getToken(),action:'JOIN',name:name});
-      const s=await apiCall({route:'publicState',clientToken:getToken()});
+      const s=await apiWrite({route:'customerAction',clientToken:getToken(),action:'JOIN',name:name});
       render(s);toast('รับคิวเรียบร้อย 🎱');
     }catch(e){serverError(e)}
   }
@@ -477,9 +433,8 @@
     if(!confirm('ยืนยันยกเลิกคิวของคุณ?'))return;
     busy=true;setBusy(true);
     try{
-      await apiWrite({route:'customerAction',clientToken:getToken(),action:'CANCEL'});
+      const s=await apiWrite({route:'customerAction',clientToken:getToken(),action:'CANCEL'});
       lastStatus=null;
-      const s=await apiCall({route:'publicState',clientToken:getToken()});
       render(s);toast('ยกเลิกคิวแล้ว');
     }catch(e){serverError(e)}
   }
@@ -488,8 +443,7 @@
     if(busy)return;
     busy=true;setBusy(true);
     try{
-      await apiWrite({route:'customerAction',clientToken:getToken(),action:'ACK'});
-      const s=await apiCall({route:'publicState',clientToken:getToken()});
+      const s=await apiWrite({route:'customerAction',clientToken:getToken(),action:'ACK'});
       render(s);toast('แจ้งพนักงานแล้วว่ากำลังไป');
     }catch(e){serverError(e)}
   }
