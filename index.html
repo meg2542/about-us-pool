@@ -264,7 +264,7 @@
       </section>
     </main>
 
-    <div class="footer">ABOUT US • POOL QUEUE V1.6</div>
+    <div class="footer">ABOUT US • POOL QUEUE V1.6.2</div>
   </div>
   <div id="toast" class="toast"></div>
 
@@ -414,7 +414,8 @@
     }
 
     clearTimeout(timer);
-    timer=setTimeout(refresh,mine&&mine.status==='CALLED'?2500:5000);
+    const refreshMs = mine ? (mine.status==='CALLED' ? 1500 : 2500) : 3000;
+    timer=setTimeout(refresh,refreshMs);
   }
 
   async function joinQueue(){
