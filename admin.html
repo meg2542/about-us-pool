@@ -113,6 +113,7 @@
   </section>
 </main>
 
+<iframe id="poolWriteFrame" name="poolWriteFrame" style="display:none" title="background request"></iframe>
 <div id="toast" class="toast"></div>
 
 <script>
@@ -196,25 +197,31 @@
     throw new Error('ระบบบันทึกช้าเกินไป กรุณาลองใหม่');
   }
 
+  function submitFormPost(params, requestId){
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = API_URL;
+    form.target = 'poolWriteFrame';
+    form.style.display = 'none';
+
+    const all = Object.assign({requestId:requestId}, params || {});
+    Object.keys(all).forEach(function(key){
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = String(all[key] == null ? '' : all[key]);
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+    setTimeout(function(){ form.remove(); }, 800);
+  }
+
   async function apiWrite(params){
     const requestId = makeRequestId();
-    const body = new URLSearchParams();
-
-    body.set('requestId', requestId);
-    Object.keys(params || {}).forEach(function(key){
-      const value = params[key];
-      if(value !== undefined && value !== null){
-        body.set(key, String(value));
-      }
-    });
-
-    await fetch(API_URL, {
-      method:'POST',
-      mode:'no-cors',
-      cache:'no-store',
-      body:body
-    });
-
+    submitFormPost(params, requestId);
+    await sleep(250);
     return pollWriteResult(requestId);
   }
 
@@ -344,5 +351,6 @@
 
   refresh();
 </script>
+<div style="position:fixed;right:10px;bottom:8px;color:#33443a;font:10px system-ui">V1.5</div>
 </body>
 </html>
