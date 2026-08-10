@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#07100d">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="ABOUT US POOL">
+  <link rel="manifest" href="./manifest.json">
+  <link rel="apple-touch-icon" href="./icon-192.png">
+  <title>ABOUT US POOL QUEUE</title>
+  <style>
+    :root{
+      --bg:#050907;
+      --panel:#0d1512;
+      --panel2:#111c18;
+      --line:rgba(255,255,255,.09);
+      --text:#f7fbf8;
+      --muted:#8fa298;
+      --green:#40e078;
+      --green2:#19b95a;
+      --felt:#0a3b29;
+      --yellow:#ffc94c;
+      --red:#ff5c66;
+      --shadow:0 20px 60px rgba(0,0,0,.42);
+    }
+    *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+    html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text)}
+    body{
+      font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;
+      min-height:100vh;
+      background:
+        radial-gradient(circle at 50% -6%,rgba(15,112,72,.34),transparent 34%),
+        radial-gradient(circle at 15% 32%,rgba(18,82,57,.12),transparent 26%),
+        linear-gradient(180deg,#07110d 0,#050907 52%,#030604 100%);
+      overflow-x:hidden;
+    }
+    body:before{
+      content:"";
+      position:fixed;inset:0;pointer-events:none;opacity:.13;
+      background-image:
+        repeating-linear-gradient(35deg,rgba(255,255,255,.035) 0 1px,transparent 1px 6px);
+      mix-blend-mode:soft-light;
+    }
+    .page{width:min(460px,100%);margin:0 auto;padding:env(safe-area-inset-top) 16px calc(28px + env(safe-area-inset-bottom))}
+    .topbar{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:18px 2px 14px;
+    }
+    .brand{display:flex;align-items:center;gap:11px}
+    .ball{
+      width:42px;height:42px;border-radius:50%;
+      display:grid;place-items:center;
+      background:radial-gradient(circle at 35% 28%,#56615c 0 6%,#151a17 23%,#020302 72%);
+      box-shadow:inset -5px -8px 12px #000,0 7px 20px #0008;
+      font-weight:950;font-size:17px;
+    }
+    .ball span{width:22px;height:22px;background:#f7f7f2;color:#111;border-radius:50%;display:grid;place-items:center}
+    .brand-title{font-size:15px;font-weight:900;letter-spacing:1.4px}
+    .brand-sub{font-size:11px;color:var(--muted);margin-top:2px}
+    .live{
+      display:inline-flex;align-items:center;gap:7px;padding:7px 10px;border-radius:999px;
+      border:1px solid rgba(64,224,120,.25);background:rgba(28,99,60,.18);
+      color:#aaf5c4;font-size:11px;font-weight:800;white-space:nowrap;
+    }
+    .live.closed{border-color:rgba(255,92,102,.28);background:rgba(120,27,38,.18);color:#ffb7bc}
+    .dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 10px var(--green)}
+    .live.closed .dot{background:var(--red);box-shadow:0 0 10px var(--red)}
+    .card{
+      background:linear-gradient(180deg,rgba(18,29,24,.97),rgba(10,17,14,.98));
+      border:1px solid var(--line);border-radius:24px;
+      box-shadow:var(--shadow);overflow:hidden;margin-bottom:13px;
+    }
+    .hero{
+      position:relative;padding:22px 19px 19px;text-align:center;
+      background:
+        radial-gradient(circle at 50% 20%,rgba(50,184,107,.18),transparent 43%),
+        linear-gradient(180deg,rgba(18,34,27,.98),rgba(9,16,13,.98));
+    }
+    .hero:after{
+      content:"";position:absolute;left:18px;right:18px;bottom:0;height:1px;
+      background:linear-gradient(90deg,transparent,rgba(64,224,120,.35),transparent)
+    }
+    .eyebrow{font-size:11px;color:var(--muted);font-weight:800;letter-spacing:.8px;text-transform:uppercase}
+    .current{
+      margin:6px 0 3px;font-size:56px;font-weight:950;line-height:1.05;
+      letter-spacing:-2px;color:var(--green);text-shadow:0 0 26px rgba(64,224,120,.16)
+    }
+    .current.queue{font-size:66px}
+    .hero-note{font-size:12px;color:#a7b7ae}
+    .stats{display:grid;grid-template-columns:1fr 1fr;gap:9px;padding:14px}
+    .stat{
+      padding:13px 10px;border-radius:17px;background:rgba(4,8,6,.52);
+      border:1px solid rgba(255,255,255,.07);text-align:center;
+    }
+    .stat-label{font-size:10px;color:var(--muted);margin-bottom:4px}
+    .stat-value{font-size:22px;font-weight:900}
+    .stat-value small{font-size:12px;color:#c3d0c8;font-weight:800}
+    .section{padding:18px}
+    .section h2{margin:0;font-size:18px;letter-spacing:-.2px}
+    .section p{margin:5px 0 0;color:var(--muted);font-size:12px;line-height:1.55}
+    .field-wrap{position:relative;margin-top:14px}
+    .field-icon{position:absolute;left:15px;top:50%;transform:translateY(-50%);font-size:16px;opacity:.7}
+    input{
+      width:100%;height:54px;border-radius:16px;border:1px solid rgba(255,255,255,.12);
+      background:#060b09;color:#fff;font-size:16px;outline:none;padding:0 14px 0 43px;
+      transition:.2s;
+    }
+    input:focus{border-color:rgba(64,224,120,.62);box-shadow:0 0 0 4px rgba(64,224,120,.08)}
+    input::placeholder{color:#627269}
+    button{
+      appearance:none;border:0;width:100%;height:54px;border-radius:16px;
+      font-size:15px;font-weight:900;cursor:pointer;margin-top:10px;transition:transform .12s,opacity .12s;
+    }
+    button:active{transform:scale(.985)}
+    button:disabled{opacity:.45;cursor:default}
+    .primary{
+      color:#021006;background:linear-gradient(180deg,#4cf18b,#23c963);
+      box-shadow:0 10px 25px rgba(31,201,99,.16);
+    }
+    .danger{color:#ffc1c5;background:#2c1115;border:1px solid #5f252c}
+    .ghost{color:#dfe8e2;background:#121c18;border:1px solid rgba(255,255,255,.09)}
+    .notice{
+      margin-bottom:13px;padding:13px 15px;border-radius:17px;
+      font-size:12px;font-weight:750;line-height:1.5;
+      border:1px solid rgba(255,255,255,.08)
+    }
+    .notice.red{background:#261014;color:#ffc2c6;border-color:#552028}
+    .notice.yellow{background:#2a220d;color:#ffe4a1;border-color:#5e4a18}
+    .ticket{padding:20px;position:relative}
+    .ticket:before,.ticket:after{
+      content:"";position:absolute;top:142px;width:18px;height:18px;background:var(--bg);border-radius:50%;
+    }
+    .ticket:before{left:-9px}.ticket:after{right:-9px}
+    .ticket-top{text-align:center;padding:4px 0 19px;border-bottom:1px dashed rgba(255,255,255,.16)}
+    .ticket-label{font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.4px}
+    .my-number{font-size:82px;font-weight:950;line-height:1;margin:7px 0 5px;letter-spacing:-5px}
+    .status{
+      display:inline-flex;align-items:center;gap:7px;border-radius:999px;padding:7px 11px;
+      background:#11291c;color:#aaf1c2;border:1px solid #255b3a;font-size:11px;font-weight:900;
+    }
+    .status.called{background:#302309;color:#ffe19b;border-color:#735719}
+    .status.playing{background:#0c2f22;color:#8cf3ba;border-color:#196144}
+    .ticket-bottom{padding-top:17px}
+    .two{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+    .metric{background:#080e0b;border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:13px;text-align:center}
+    .metric span{font-size:10px;color:var(--muted);display:block;margin-bottom:4px}
+    .metric strong{font-size:19px}
+    .hint{
+      display:flex;gap:9px;align-items:flex-start;margin-top:13px;padding:11px 12px;
+      border-radius:14px;background:rgba(255,255,255,.035);color:#8fa298;font-size:11px;line-height:1.5
+    }
+    .countdown{
+      font-size:50px;font-weight:950;color:var(--yellow);line-height:1;margin:13px 0 2px;
+      font-variant-numeric:tabular-nums;
+    }
+    .call-title{font-size:22px;font-weight:950;color:#fff;margin-top:8px}
+    .call-sub{font-size:12px;color:#d4bd83;margin-top:5px}
+    .called-card{
+      background:
+        radial-gradient(circle at 50% 0,rgba(255,196,65,.17),transparent 46%),
+        linear-gradient(180deg,#211b0d,#0c0e0b);
+      border-color:rgba(255,201,76,.28);
+    }
+    .loading{
+      min-height:290px;display:grid;place-items:center;text-align:center;color:var(--muted)
+    }
+    .spinner{width:26px;height:26px;border:3px solid #213128;border-top-color:var(--green);border-radius:50%;animation:spin .7s linear infinite;margin:auto}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .hidden{display:none!important}
+    .toast{
+      position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));
+      transform:translate(-50%,130px);z-index:100;
+      width:min(390px,calc(100% - 28px));padding:13px 15px;border-radius:15px;
+      color:#09110c;background:#f7fbf8;font-weight:850;font-size:13px;text-align:center;
+      box-shadow:0 12px 40px #0008;transition:.25s;
+    }
+    .toast.show{transform:translate(-50%,0)}
+
+    .push-card{padding:15px 16px}
+    .push-head{display:flex;align-items:flex-start;gap:11px}
+    .push-icon{
+      width:38px;height:38px;flex:0 0 38px;border-radius:13px;display:grid;place-items:center;
+      background:rgba(64,224,120,.12);border:1px solid rgba(64,224,120,.2);font-size:18px
+    }
+    .push-title{font-size:14px;font-weight:900;color:#f5fbf7}
+    .push-text{font-size:11px;line-height:1.55;color:var(--muted);margin-top:3px}
+    .push-actions{display:flex;gap:8px;margin-top:11px}
+    .push-actions button{margin:0;min-height:42px}
+    .push-secondary{
+      width:auto;flex:1;background:#17221d;color:#d9e6df;border:1px solid rgba(255,255,255,.09)
+    }
+    .push-on{color:#9bf5ba}
+    .ios-steps{
+      margin-top:11px;padding:11px 12px;border-radius:14px;background:rgba(255,201,76,.08);
+      border:1px solid rgba(255,201,76,.15);color:#e9d6a4;font-size:11px;line-height:1.65
+    }
+    .footer{text-align:center;color:#425047;font-size:10px;padding:7px 0 1px;letter-spacing:.7px}
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <div class="ball"><span>8</span></div>
+        <div>
+          <div class="brand-title">ABOUT US</div>
+          <div class="brand-sub">POOL QUEUE</div>
+        </div>
+      </div>
+      <div id="liveBadge" class="live"><i class="dot"></i><span id="liveText">เปิดรับคิว</span></div>
+    </header>
+
+    <div id="loading" class="card loading">
+      <div><div class="spinner"></div><div style="margin-top:12px;font-size:12px">กำลังโหลดคิว…</div></div>
+    </div>
+
+    <main id="app" class="hidden">
+      <div id="closedNotice" class="notice red hidden">⛔ ขณะนี้ปิดรับคิวชั่วคราว</div>
+
+      <section id="joinView" class="hidden">
+        <div class="card">
+          <div class="hero">
+            <div class="eyebrow">โต๊ะพูลตอนนี้</div>
+            <div id="currentQueue" class="current">ว่าง</div>
+            <div id="currentNote" class="hero-note">พร้อมรับผู้เล่นคิวถัดไป</div>
+          </div>
+          <div class="stats">
+            <div class="stat">
+              <div class="stat-label">คิวที่กำลังรอ</div>
+              <div id="waitingCount" class="stat-value">0 <small>คิว</small></div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">เวลาเฉลี่ย / เกม</div>
+              <div class="stat-value"><span id="avgMin">15</span> <small>นาที</small></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card section">
+          <h2>รับคิวของคุณ 🎱</h2>
+          <p>ใส่ชื่อเล่นสั้น ๆ แล้วกดรับคิว ระบบจะจำคิวไว้บนเครื่องนี้</p>
+          <div class="field-wrap">
+            <span class="field-icon">👤</span>
+            <input id="nameInput" maxlength="30" autocomplete="nickname" placeholder="ชื่อเล่น เช่น บอล">
+          </div>
+          <button id="joinBtn" class="primary" onclick="joinQueue()">รับคิวเลย</button>
+          <div id="queueFull" class="notice yellow hidden" style="margin:11px 0 0">คิวเต็มแล้ว กรุณาลองใหม่ภายหลัง</div>
+        </div>
+
+        <div id="pushCardJoin" class="card push-card hidden">
+          <div class="push-head">
+            <div class="push-icon">🔔</div>
+            <div>
+              <div class="push-title">แจ้งเตือนเมื่อถึงคิว</div>
+              <div id="pushTextJoin" class="push-text">รับแจ้งเตือนได้แม้ล็อกหน้าจอ</div>
+            </div>
+          </div>
+          <div class="push-actions">
+            <button id="pushBtnJoin" class="primary" onclick="enablePush()">เปิดแจ้งเตือน</button>
+          </div>
+          <div id="iosStepsJoin" class="ios-steps hidden">
+            iPhone: กดปุ่มแชร์ <b>□↑</b> → <b>เพิ่มไปยังหน้าจอโฮม</b> → เปิด ABOUT US POOL จากไอคอนที่เพิ่ม แล้วกด “เปิดแจ้งเตือน” ก่อนรับคิว
+          </div>
+        </div>
+      </section>
+
+      <section id="myView" class="hidden">
+        <div id="normalTicket" class="card ticket">
+          <div class="ticket-top">
+            <div class="ticket-label">คิวของคุณ</div>
+            <div id="myQueue" class="my-number">P00</div>
+            <div id="myStatus" class="status">● กำลังรอ</div>
+          </div>
+          <div class="ticket-bottom">
+            <div id="waitInfo" class="two">
+              <div class="metric"><span>เหลือก่อนถึงคุณ</span><strong id="ahead">0 คิว</strong></div>
+              <div class="metric"><span>เวลารอประมาณ</span><strong id="estimate">—</strong></div>
+            </div>
+            <div id="playingInfo" class="hint hidden">
+              <span>✅</span><span>คิวของคุณกำลังเล่นอยู่ ขอให้สนุกกับเกมครับ</span>
+            </div>
+            <div class="hint"><span>↻</span><span>ไม่ต้องกดรีเฟรช หน้านี้เช็กสถานะคิวให้อัตโนมัติ</span></div>
+          </div>
+        </div>
+
+        <div id="calledCard" class="card ticket called-card hidden">
+          <div class="ticket-top">
+            <div class="ticket-label">ถึงคิวของคุณแล้ว</div>
+            <div id="calledQueue" class="my-number" style="color:var(--yellow)">P00</div>
+            <div class="call-title">กรุณามาที่โต๊ะพูล</div>
+            <div class="call-sub">กด “กำลังไป” เพื่อแจ้งพนักงาน</div>
+            <div id="countdown" class="countdown">05:00</div>
+          </div>
+          <div class="ticket-bottom">
+            <button id="ackBtn" class="primary" onclick="ackQueue()">✓ กำลังไป</button>
+          </div>
+        </div>
+
+        <div id="pushCardMine" class="card push-card hidden">
+          <div class="push-head">
+            <div class="push-icon">🔔</div>
+            <div>
+              <div class="push-title">แจ้งเตือนเมื่อถึงคิว</div>
+              <div id="pushTextMine" class="push-text">รับแจ้งเตือนได้แม้ล็อกหน้าจอ</div>
+            </div>
+          </div>
+          <div class="push-actions">
+            <button id="pushBtnMine" class="primary" onclick="enablePush()">เปิดแจ้งเตือน</button>
+            <button id="pushTestBtn" class="push-secondary hidden" onclick="testPush()">ทดสอบ</button>
+          </div>
+          <div id="iosStepsMine" class="ios-steps hidden">
+            ถ้ารับคิวจาก Safari ไปแล้ว แนะนำใช้หน้านี้ต่อจนจบคิวนี้ ครั้งถัดไปให้เปิดจากไอคอนหน้าจอโฮมเพื่อรับ Push ตอนล็อกจอ
+          </div>
+        </div>
+
+        <div class="card section">
+          <button id="cancelBtn" class="danger" onclick="cancelQueue()">ยกเลิกคิว</button>
+        </div>
+      </section>
+    </main>
+
+    <div class="footer">ABOUT US • POOL QUEUE V1.7.0 PUSH</div>
+  </div>
+  <div id="toast" class="toast"></div>
+
+<script>
+  const API_URL = "https://script.google.com/macros/s/AKfycbwLr1vx6pLxWq7p3CGkosLpkbnwJql4u5IHZ7hGVGuXujwtQ9DdM4p-IiJZSY6_oZZF8Q/exec";
+  let apiSeq = 0;
+  let state = null;
+  let timer = null;
+  let countdownTimer = null;
+  let lastStatus = null;
+  let busy = false;
+  let pushConfigured = false;
+  let pushAppId = '';
+  let pushInitStarted = false;
+  let pushReady = false;
+  let oneSignalRef = null;
+
+  function getToken(){
+    let t = localStorage.getItem('aboutus_pool_token');
+    if(!t){
+      t = (crypto.randomUUID ? crypto.randomUUID() :
+        'c-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+      localStorage.setItem('aboutus_pool_token', t);
+    }
+    return t;
+  }
+
+  function apiCall(params){
+    return new Promise(function(resolve,reject){
+      const callback='__poolcb_'+Date.now()+'_'+(++apiSeq);
+      const script=document.createElement('script');
+      let done=false;
+
+      function cleanup(){
+        if(done)return;
+        done=true;
+        clearTimeout(timeout);
+        try{delete window[callback]}catch(e){window[callback]=undefined}
+        if(script.parentNode)script.parentNode.removeChild(script);
+      }
+
+      window[callback]=function(response){
+        cleanup();
+        if(response&&response.ok) resolve(response.data);
+        else reject(new Error(response&&response.error?response.error:'เกิดข้อผิดพลาด'));
+      };
+
+      const q=new URLSearchParams();
+      q.set('api','1');
+      q.set('callback',callback);
+      q.set('_',String(Date.now()));
+      Object.keys(params||{}).forEach(function(k){
+        const v=params[k];
+        if(v!==undefined&&v!==null)q.set(k,String(v));
+      });
+
+      script.src=API_URL+'?'+q.toString();
+      script.async=true;
+      script.onerror=function(){cleanup();reject(new Error('เชื่อมต่อระบบคิวไม่สำเร็จ'))};
+      const timeout=setTimeout(function(){cleanup();reject(new Error('ระบบตอบกลับช้าเกินไป'))},15000);
+      document.body.appendChild(script);
+    });
+  }
+
+
+  function apiWrite(params){
+    return apiCall(params);
+  }
+
+  function isIOS(){
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function isStandalone(){
+    return window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone === true;
+  }
+
+  function pushExternalId(){
+    return 'poolq_' + getToken();
+  }
+
+  function initPush(appId){
+    appId = String(appId || '').trim();
+    if(!appId || pushInitStarted) return;
+
+    pushInitStarted = true;
+    pushAppId = appId;
+    window.OneSignalDeferred = window.OneSignalDeferred || [];
+
+    window.OneSignalDeferred.push(async function(OneSignal){
+      try{
+        await OneSignal.init({
+          appId: pushAppId,
+          serviceWorkerPath: 'about-us-pool/OneSignalSDKWorker.js',
+          serviceWorkerParam: { scope: '/about-us-pool/' },
+          notifyButton: { enable: false },
+          autoResubscribe: true
+        });
+
+        await OneSignal.login(pushExternalId());
+        oneSignalRef = OneSignal;
+        pushReady = true;
+
+        OneSignal.Notifications.addEventListener('permissionChange', function(){
+          updatePushUi();
+        });
+        OneSignal.User.PushSubscription.addEventListener('change', function(){
+          updatePushUi();
+        });
+
+        updatePushUi();
+      }catch(e){
+        console.warn('Push init failed', e);
+        pushReady = false;
+        updatePushUi();
+      }
+    });
+
+    const sdk=document.createElement('script');
+    sdk.src='https://cdn.onesignal.com/sdks/web/v16/OneSignalSDK.page.js';
+    sdk.defer=true;
+    sdk.onerror=function(){
+      pushReady=false;
+      updatePushUi();
+    };
+    document.head.appendChild(sdk);
+  }
+
+  function updatePushUi(){
+    const cards=[document.getElementById('pushCardJoin'),document.getElementById('pushCardMine')];
+    cards.forEach(el=>{ if(el) el.classList.toggle('hidden',!pushConfigured); });
+    if(!pushConfigured) return;
+
+    const iosBrowser=isIOS()&&!isStandalone();
+    const permitted=!!(pushReady&&oneSignalRef&&oneSignalRef.Notifications.permission);
+    const optedIn=!!(pushReady&&oneSignalRef&&oneSignalRef.User.PushSubscription.optedIn);
+    const active=permitted&&optedIn;
+
+    ['Join','Mine'].forEach(function(suffix){
+      const text=document.getElementById('pushText'+suffix);
+      const btn=document.getElementById('pushBtn'+suffix);
+      const steps=document.getElementById('iosSteps'+suffix);
+      if(!text||!btn) return;
+
+      if(active){
+        text.textContent='✓ เปิดแล้ว — ระบบจะแจ้งเมื่อถึงคิวของคุณ';
+        text.classList.add('push-on');
+        btn.textContent='เปิดแจ้งเตือนแล้ว ✓';
+        btn.disabled=true;
+      }else if(iosBrowser){
+        text.textContent='iPhone ต้องเพิ่มเว็บลงหน้าจอโฮมก่อน จึงแจ้งเตือนตอนล็อกจอได้';
+        text.classList.remove('push-on');
+        btn.textContent='ดูวิธีเปิดแจ้งเตือน';
+        btn.disabled=false;
+      }else if(!pushReady){
+        text.textContent='กำลังเตรียมระบบแจ้งเตือน…';
+        text.classList.remove('push-on');
+        btn.textContent='เปิดแจ้งเตือน';
+        btn.disabled=true;
+      }else{
+        text.textContent='รับแจ้งเตือนได้แม้ล็อกหน้าจอ';
+        text.classList.remove('push-on');
+        btn.textContent='เปิดแจ้งเตือน';
+        btn.disabled=false;
+      }
+
+      if(steps) steps.classList.toggle('hidden',!iosBrowser);
+    });
+
+    const testBtn=document.getElementById('pushTestBtn');
+    if(testBtn) testBtn.classList.toggle('hidden',!active);
+  }
+
+  function enablePush(){
+    if(!pushConfigured){
+      toast('ระบบแจ้งเตือนยังไม่ได้ตั้งค่า');
+      return;
+    }
+
+    if(isIOS()&&!isStandalone()){
+      ['iosStepsJoin','iosStepsMine'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el) el.classList.remove('hidden');
+      });
+      toast('เพิ่มเว็บไปยังหน้าจอโฮม แล้วเปิดจากไอคอนเพื่อเปิดแจ้งเตือน');
+      return;
+    }
+
+    if(!pushReady||!oneSignalRef){
+      toast('ระบบแจ้งเตือนกำลังโหลด กรุณาลองอีกครั้ง');
+      return;
+    }
+
+    window.OneSignalDeferred.push(async function(OneSignal){
+      try{
+        await OneSignal.login(pushExternalId());
+        if(!OneSignal.Notifications.isPushSupported()){
+          toast('เบราว์เซอร์นี้ไม่รองรับการแจ้งเตือน');
+          return;
+        }
+        await OneSignal.Notifications.requestPermission();
+        if(OneSignal.Notifications.permission){
+          await OneSignal.User.PushSubscription.optIn();
+          toast('เปิดแจ้งเตือนแล้ว 🔔');
+        }else{
+          toast('ยังไม่ได้อนุญาตการแจ้งเตือน');
+        }
+        updatePushUi();
+      }catch(e){
+        console.warn(e);
+        toast('เปิดแจ้งเตือนไม่สำเร็จ');
+      }
+    });
+  }
+
+  async function testPush(){
+    if(busy)return;
+    busy=true;setBusy(true);
+    try{
+      const s=await apiWrite({route:'customerAction',clientToken:getToken(),action:'TEST_PUSH'});
+      render(s);
+      toast('ส่งแจ้งเตือนทดสอบแล้ว');
+    }catch(e){serverError(e)}
+  }
+
+
+  function serverError(err){
+    busy=false;
+    setBusy(false);
+    toast(err&&err.message?err.message:'เกิดข้อผิดพลาด กรุณาลองใหม่');
+  }
+
+  function refresh(){
+    clearTimeout(timer);
+    apiCall({route:'publicState',clientToken:getToken()})
+      .then(render).catch(serverError);
+  }
+
+  function render(s){
+    busy=false; state=s; setBusy(false);
+    pushConfigured=!!s.pushConfigured;
+    if(pushConfigured&&s.pushAppId){initPush(s.pushAppId)}
+    updatePushUi();
+    document.getElementById('loading').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+
+    const badge=document.getElementById('liveBadge');
+    badge.classList.toggle('closed',!s.isOpen);
+    document.getElementById('liveText').textContent=s.isOpen?'เปิดรับคิว':'ปิดรับคิว';
+    document.getElementById('closedNotice').classList.toggle('hidden',s.isOpen);
+
+    const mine=s.mine;
+    document.getElementById('joinView').classList.toggle('hidden',!!mine);
+    document.getElementById('myView').classList.toggle('hidden',!mine);
+
+    if(!mine){
+      const current=document.getElementById('currentQueue');
+      const note=document.getElementById('currentNote');
+
+      if(s.currentPlaying){
+        current.textContent=s.currentPlaying.queueNo;
+        current.classList.add('queue');
+        note.textContent='กำลังเล่นอยู่';
+      }else if(s.called){
+        current.textContent=s.called.queueNo;
+        current.classList.add('queue');
+        note.textContent='กำลังเรียกคิวนี้';
+      }else{
+        current.textContent='ว่าง';
+        current.classList.remove('queue');
+        note.textContent='พร้อมรับผู้เล่นคิวถัดไป';
+      }
+
+      document.getElementById('waitingCount').innerHTML=s.waitingCount+' <small>คิว</small>';
+      document.getElementById('avgMin').textContent=s.avgGameMin;
+
+      const full=s.waitingCount>=s.maxQueue;
+      document.getElementById('queueFull').classList.toggle('hidden',!full);
+      document.getElementById('joinBtn').disabled=!s.canJoin;
+    }else{
+      const called=mine.status==='CALLED';
+      const playing=mine.status==='PLAYING';
+
+      document.getElementById('normalTicket').classList.toggle('hidden',called);
+      document.getElementById('calledCard').classList.toggle('hidden',!called);
+      document.getElementById('cancelBtn').classList.toggle('hidden',playing);
+
+      if(called){
+        document.getElementById('calledQueue').textContent=mine.queueNo;
+        startCountdown(mine.callRemainingSec||0);
+        const acked=!!mine.acknowledgedAt;
+        document.getElementById('ackBtn').textContent=acked?'✓ แจ้งแล้วว่ากำลังไป':'✓ กำลังไป';
+        document.getElementById('ackBtn').disabled=acked;
+      }else{
+        clearInterval(countdownTimer);
+        document.getElementById('myQueue').textContent=mine.queueNo;
+        const status=document.getElementById('myStatus');
+        status.classList.toggle('playing',playing);
+        status.textContent=playing?'● กำลังเล่น':'● กำลังรอ';
+        document.getElementById('waitInfo').classList.toggle('hidden',playing);
+        document.getElementById('playingInfo').classList.toggle('hidden',!playing);
+
+        if(mine.status==='WAITING'){
+          document.getElementById('ahead').textContent=mine.ahead+' คิว';
+          document.getElementById('estimate').textContent=
+            mine.estimateMax<=5?'ใกล้ถึงแล้ว':mine.estimateMin+'–'+mine.estimateMax+' นาที';
+        }
+      }
+
+      if(lastStatus&&lastStatus!==mine.status&&mine.status==='CALLED') notifyReached();
+      lastStatus=mine.status;
+    }
+
+    clearTimeout(timer);
+    const refreshMs = mine ? (mine.status==='CALLED' ? 1500 : 2500) : 3000;
+    timer=setTimeout(refresh,refreshMs);
+  }
+
+  async function joinQueue(){
+    if(busy)return;
+    const name=document.getElementById('nameInput').value.trim();
+    if(!name){toast('กรุณาใส่ชื่อเล่น');return}
+    busy=true;setBusy(true);
+    try{
+      const s=await apiWrite({route:'customerAction',clientToken:getToken(),action:'JOIN',name:name});
+      render(s);toast('รับคิวเรียบร้อย 🎱');
+    }catch(e){serverError(e)}
+  }
+
+  async function cancelQueue(){
+    if(busy)return;
+    if(!confirm('ยืนยันยกเลิกคิวของคุณ?'))return;
+    busy=true;setBusy(true);
+    try{
+      const s=await apiWrite({route:'customerAction',clientToken:getToken(),action:'CANCEL'});
+      lastStatus=null;
+      render(s);toast('ยกเลิกคิวแล้ว');
+    }catch(e){serverError(e)}
+  }
+
+  async function ackQueue(){
+    if(busy)return;
+    busy=true;setBusy(true);
+    try{
+      const s=await apiWrite({route:'customerAction',clientToken:getToken(),action:'ACK'});
+      render(s);toast('แจ้งพนักงานแล้วว่ากำลังไป');
+    }catch(e){serverError(e)}
+  }
+
+  function startCountdown(sec){
+    clearInterval(countdownTimer);
+    let remain=Math.max(0,Number(sec||0));
+    const el=document.getElementById('countdown');
+    function draw(){
+      const m=Math.floor(remain/60),s=remain%60;
+      el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+      if(remain>0)remain--;
+    }
+    draw();countdownTimer=setInterval(draw,1000);
+  }
+
+  function notifyReached(){
+    try{if(navigator.vibrate)navigator.vibrate([300,120,300])}catch(e){}
+    toast('🔔 ถึงคิวของคุณแล้ว!');
+  }
+
+  function setBusy(on){
+    document.querySelectorAll('button').forEach(function(b){
+      if(on){
+        if(!b.hasAttribute('data-prev-disabled'))b.setAttribute('data-prev-disabled',b.disabled?'1':'0');
+        b.disabled=true;
+      }else if(b.hasAttribute('data-prev-disabled')){
+        b.disabled=b.getAttribute('data-prev-disabled')==='1';
+        b.removeAttribute('data-prev-disabled');
+      }
+    });
+    if(on&&document.getElementById('joinBtn'))document.getElementById('joinBtn').textContent='กำลังรับคิว…';
+    else if(document.getElementById('joinBtn'))document.getElementById('joinBtn').textContent='รับคิวเลย';
+  }
+
+  function toast(msg){
+    const el=document.getElementById('toast');
+    el.textContent=msg;el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'),2600);
+  }
+
+  document.getElementById('nameInput').addEventListener('keydown',e=>{if(e.key==='Enter')joinQueue()});
+  refresh();
+</script>
+</body>
+</html>

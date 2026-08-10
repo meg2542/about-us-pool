@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json.schemastore.org/web-manifest-combined.json",
+  "name": "ABOUT US POOL QUEUE",
+  "short_name": "ABOUT US POOL",
+  "id": "/about-us-pool/",
+  "start_url": "/about-us-pool/",
+  "scope": "/about-us-pool/",
+  "display": "standalone",
+  "background_color": "#050907",
+  "theme_color": "#07100d",
+  "description": "ระบบคิวโต๊ะพูล ABOUT US",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
