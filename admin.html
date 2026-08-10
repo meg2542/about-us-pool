@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="utf-8">
+  <style>
+    :root{
+      --bg:#07090c;--card:#11161c;--line:#27323d;--text:#f7fafc;--muted:#91a0ae;
+      --green:#4ade80;--green2:#22c55e;--yellow:#fbbf24;--red:#ef4444;--blue:#38bdf8;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:#07090c;color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif}
+    .wrap{width:min(950px,100%);margin:auto;padding:16px}
+    .top{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 14px}
+    .top h1{font-size:19px;margin:0}.top small{color:var(--muted)}
+    .card{background:linear-gradient(180deg,#141a21,#0e1318);border:1px solid var(--line);
+      border-radius:19px;padding:16px;margin-bottom:12px}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .stat{background:#0a0e12;border:1px solid #222d37;border-radius:15px;padding:13px}
+    .stat span{font-size:12px;color:var(--muted)}.stat strong{display:block;font-size:23px;margin-top:2px}
+    button{border:0;border-radius:12px;padding:11px 13px;font-weight:800;cursor:pointer;font-size:14px}
+    button:disabled{opacity:.45}.primary{background:#39d873;color:#04130a}.secondary{background:#1b2630;color:#e5edf4;border:1px solid #33424f}
+    .danger{background:#351518;color:#ffb4ba;border:1px solid #6f2930}.warning{background:#3b2c09;color:#ffd86e;border:1px solid #725819}
+    .blue{background:#102c3a;color:#9ee4ff;border:1px solid #24566d}
+    .full{width:100%;padding:14px}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
+    .section-title{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+    .section-title h2{font-size:16px;margin:0}.muted{color:var(--muted);font-size:12px}
+    .queue-current{text-align:center;padding:24px 10px}.queue-current .num{font-size:66px;font-weight:950;color:var(--green);line-height:1}
+    .queue-current .name{font-size:20px;font-weight:800;margin-top:7px}
+    .queue-item{display:grid;grid-template-columns:72px 1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid #202933}
+    .queue-item:last-child{border-bottom:0}.qnum{font-size:22px;font-weight:900}.qname{font-weight:800}.qmeta{color:var(--muted);font-size:12px;margin-top:2px}
+    .actions{display:flex;gap:6px;flex-wrap:wrap}.actions button{padding:9px 10px;font-size:12px}
+    .input{width:100%;background:#090d11;color:#fff;border:1px solid #33414d;border-radius:13px;padding:13px;font-size:15px;outline:none}
+    .toggle{display:flex;align-items:center;gap:9px}.dot{width:9px;height:9px;border-radius:50%;background:var(--red)}
+    .dot.open{background:var(--green);box-shadow:0 0 14px #22c55e}
+    .called{border-color:#6f5614;background:linear-gradient(180deg,#211b0c,#12110c)}
+    .called .num{color:var(--yellow)}
+    .ack{color:#86efac;font-weight:800}.ack.overdue{color:#ff9ca3}.called.overdue{border-color:#7b2c34;background:linear-gradient(180deg,#271013,#120c0d)}
+    .called.overdue .num{color:#ff7c84}.hidden{display:none!important}
+    .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(110px);background:#fff;color:#111827;
+      padding:11px 15px;border-radius:12px;font-weight:800;transition:.2s;z-index:20;max-width:90%;text-align:center}
+    .toast.show{transform:translateX(-50%) translateY(0)}
+    @media(max-width:650px){
+      .grid3{grid-template-columns:1fr 1fr}.grid3 .stat:last-child{grid-column:1/-1}
+      .queue-item{grid-template-columns:58px 1fr}.actions{grid-column:1/-1}.actions button{flex:1}
+    }
+  </style>
+</head>
+<body>
+
+
+
+<main id="adminView" class="wrap">
+  <div class="top">
+    <div><h1>🎱 ABOUT US • POOL CONTROL</h1><small id="shiftText"></small></div>
+  </div>
+
+  <div class="grid3">
+    <div class="stat"><span>คิวรอ</span><strong id="statWait">0</strong></div>
+    <div class="stat"><span>เวลาเฉลี่ย</span><strong><span id="statAvg">15</span> นาที</strong></div>
+    <div class="stat">
+      <span>สถานะรับคิว</span>
+      <div class="toggle" style="margin-top:7px">
+        <div id="openDot" class="dot"></div>
+        <strong id="openText" style="font-size:18px;margin:0">ปิด</strong>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:12px">
+    <div class="row">
+      <button id="toggleBtn" class="warning" onclick="toggleOpen()">ปิดรับคิว</button>
+      <button class="secondary" onclick="refresh()">รีเฟรช</button>
+    </div>
+  </div>
+
+  <section id="playingCard" class="card hidden">
+    <div class="section-title"><h2>กำลังเล่น</h2><span id="playTime" class="muted"></span></div>
+    <div class="queue-current">
+      <div id="playingNo" class="num">P00</div>
+      <div id="playingName" class="name"></div>
+    </div>
+    <button class="primary full" onclick="finishAndCall()">✓ จบเกม + เรียกคิวถัดไป</button>
+  </section>
+
+  <section id="noPlayingCard" class="card hidden">
+    <div style="text-align:center;padding:16px;color:var(--muted)">ตอนนี้ไม่มีคิวกำลังเล่น</div>
+    <button id="callNextBtn" class="primary full" onclick="callNext()">🔔 เรียกคิวถัดไป</button>
+  </section>
+
+  <section id="calledCard" class="card called hidden">
+    <div class="section-title"><h2>🔔 กำลังเรียก</h2><span id="callRemain" class="muted"></span></div>
+    <div class="queue-current">
+      <div id="calledNo" class="num">P00</div>
+      <div id="calledName" class="name"></div>
+      <div id="calledAck" class="ack" style="margin-top:10px"></div>
+    </div>
+    <div class="row">
+      <button class="primary" onclick="startCalled()">▶ เริ่มเล่น</button>
+      <button class="danger" onclick="skipCalled()">ข้าม + เรียกคิวถัดไป</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title"><h2>เพิ่มคิวเอง</h2><span class="muted">สำหรับลูกค้าที่ไม่ได้สแกน QR</span></div>
+    <div class="row">
+      <input id="manualName" class="input" maxlength="30" placeholder="ชื่อเล่น">
+      <button class="blue" style="flex:0 0 120px" onclick="addManual()">+ เพิ่มคิว</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="section-title"><h2>คิวที่กำลังรอ</h2><span id="waitHeader" class="muted"></span></div>
+    <div id="waitingList"></div>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+<div id="pushAdminStatus" style="position:fixed;left:10px;bottom:8px;color:#52665a;font:10px system-ui">Push: …</div>
+
+<script>
+
+  const API_URL = "https://script.google.com/macros/s/AKfycbwLr1vx6pLxWq7p3CGkosLpkbnwJql4u5IHZ7hGVGuXujwtQ9DdM4p-IiJZSY6_oZZF8Q/exec";
+  let apiSeq = 0;
+
+  function apiCall(params) {
+    return new Promise(function(resolve, reject) {
+      const callback = '__poolcb_' + Date.now() + '_' + (++apiSeq);
+      const script = document.createElement('script');
+      let finished = false;
+
+      function cleanup() {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timeout);
+        try { delete window[callback]; } catch (e) { window[callback] = undefined; }
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+
+      window[callback] = function(response) {
+        cleanup();
+        if (response && response.ok) {
+          resolve(response.data);
+        } else {
+          reject(new Error(response && response.error ? response.error : 'เกิดข้อผิดพลาด'));
+        }
+      };
+
+      const query = new URLSearchParams();
+      query.set('api', '1');
+      query.set('callback', callback);
+      query.set('_', String(Date.now()));
+
+      Object.keys(params || {}).forEach(function(key) {
+        const value = params[key];
+        if (value !== undefined && value !== null) query.set(key, String(value));
+      });
+
+      script.src = API_URL + '?' + query.toString();
+      script.async = true;
+      script.onerror = function() {
+        cleanup();
+        reject(new Error('เชื่อมต่อระบบคิวไม่สำเร็จ กรุณาลองใหม่'));
+      };
+
+      const timeout = setTimeout(function() {
+        cleanup();
+        reject(new Error('ระบบตอบกลับช้าเกินไป กรุณาลองใหม่'));
+      }, 15000);
+
+      document.body.appendChild(script);
+    });
+  }
+
+
+
+  function apiWrite(params){
+    return apiCall(params);
+  }
+
+  let state = null;
+  let timer = null;
+  let busy = false;
+
+  function refresh(){
+    clearTimeout(timer);
+    apiCall({route:'adminState'}).then(render).catch(error);
+  }
+
+  function action(name, payload, successMsg){
+    if(busy) return;
+    busy=true;
+
+    const params = {route:'adminAction', action:name};
+    const p = payload || {};
+    Object.keys(p).forEach(function(key){ params[key] = p[key]; });
+
+    apiWrite(params)
+      .then(function(s){
+        busy=false;
+        render(s);
+        if(successMsg) toast(successMsg);
+      })
+      .catch(error);
+  }
+
+  function render(s){
+    busy=false; state=s;
+    const ps=document.getElementById('pushAdminStatus');
+    if(ps){
+      ps.textContent='Push: '+(s.pushConfigured?'พร้อม':'ยังไม่ตั้งค่า');
+      ps.style.color=s.pushConfigured?'#5b9b72':'#725b5b';
+    }
+    document.getElementById('shiftText').textContent = 'รอบ ' + s.shiftKey;
+    document.getElementById('statWait').textContent = s.waiting.length + (s.called ? 1 : 0);
+    document.getElementById('statAvg').textContent = s.avgGameMin;
+    document.getElementById('openDot').classList.toggle('open', s.isOpen);
+    document.getElementById('openText').textContent = s.isOpen ? 'เปิดรับคิว' : 'ปิดรับคิว';
+    document.getElementById('toggleBtn').textContent = s.isOpen ? '⏸ ปิดรับคิวชั่วคราว' : '▶ เปิดรับคิว';
+    document.getElementById('toggleBtn').className = s.isOpen ? 'warning' : 'primary';
+
+    const p=s.playing;
+    document.getElementById('playingCard').classList.toggle('hidden', !p);
+    document.getElementById('noPlayingCard').classList.toggle('hidden', !!p || !!s.called);
+    if(p){
+      document.getElementById('playingNo').textContent=p.queueNo;
+      document.getElementById('playingName').textContent=p.name;
+      document.getElementById('playTime').textContent='เล่นมา '+p.playMin+' นาที';
+    }
+
+    const c=s.called;
+    document.getElementById('calledCard').classList.toggle('hidden', !c);
+    if(!c) document.getElementById('calledCard').classList.remove('overdue');
+    if(c){
+      const overdue=!!c.callExpired;
+      const acked=!!c.acknowledgedAt;
+      const calledCard=document.getElementById('calledCard');
+      const calledAck=document.getElementById('calledAck');
+      document.getElementById('calledNo').textContent=c.queueNo;
+      document.getElementById('calledName').textContent=c.name;
+      calledCard.classList.toggle('overdue',overdue);
+      calledAck.classList.toggle('overdue',overdue);
+
+      if(overdue){
+        calledAck.textContent=acked
+          ? '⚠ เกิน 5 นาทีหลังลูกค้ากด “กำลังไป” — ให้พนักงานตัดสินใจเอง'
+          : '⚠ เกิน 3 นาทีแล้วยังไม่กด “กำลังไป” — ให้พนักงานตัดสินใจเอง';
+        document.getElementById('callRemain').textContent='เกินเวลา';
+      }else{
+        calledAck.textContent=acked
+          ? '● ลูกค้ากด “กำลังไป” แล้ว • รอมาถึงภายใน 5 นาที'
+          : 'รอลูกค้ากด “กำลังไป” ภายใน 3 นาที…';
+        document.getElementById('callRemain').textContent='เหลือ '+formatSec(c.callRemainingSec);
+      }
+    }
+
+    document.getElementById('callNextBtn').disabled = s.waiting.length===0;
+    document.getElementById('waitHeader').textContent = s.waiting.length+' คิว';
+
+    const list=document.getElementById('waitingList');
+    list.innerHTML='';
+    if(!s.waiting.length){
+      const e=document.createElement('div');e.className='muted';e.style='text-align:center;padding:20px';e.textContent='ยังไม่มีคิวรอ';list.appendChild(e);
+    }else{
+      s.waiting.forEach(function(q){
+        const item=document.createElement('div'); item.className='queue-item';
+
+        const n=document.createElement('div');n.className='qnum';n.textContent=q.queueNo;
+        const info=document.createElement('div');
+        const nm=document.createElement('div');nm.className='qname';nm.textContent=q.name;
+        const meta=document.createElement('div');meta.className='qmeta';
+        meta.textContent='รอ '+q.waitMin+' นาที • '+(q.source==='ADMIN'?'พนักงานเพิ่ม':'ลูกค้ารับเอง');
+        info.append(nm,meta);
+
+        const acts=document.createElement('div');acts.className='actions';
+        acts.append(
+          makeBtn('ไปท้ายคิว','secondary',()=>moveEnd(q.id)),
+          makeBtn('ข้าม','warning',()=>skip(q.id)),
+          makeBtn('ยกเลิก','danger',()=>cancelQ(q.id))
+        );
+        item.append(n,info,acts); list.appendChild(item);
+      });
+    }
+
+    clearTimeout(timer);
+    timer=setTimeout(refresh, 2000);
+  }
+
+  function makeBtn(text, cls, fn){
+    const b=document.createElement('button'); b.textContent=text;b.className=cls;b.onclick=fn;return b;
+  }
+
+  function toggleOpen(){
+    if(!state || busy) return;
+    const nextOpen = !state.isOpen;
+    const oldOpen = state.isOpen;
+
+    // Optimistic UI: respond immediately on screen.
+    state.isOpen = nextOpen;
+    document.getElementById('openDot').classList.toggle('open', nextOpen);
+    document.getElementById('openText').textContent = nextOpen ? 'เปิดรับคิว' : 'ปิดรับคิว';
+    document.getElementById('toggleBtn').textContent = nextOpen ? '⏸ ปิดรับคิวชั่วคราว' : '▶ เปิดรับคิว';
+    document.getElementById('toggleBtn').className = nextOpen ? 'warning' : 'primary';
+
+    action('SET_OPEN',{isOpen:nextOpen}, nextOpen?'เปิดรับคิวแล้ว':'ปิดรับคิวแล้ว');
+  }
+  function addManual(){
+    const el=document.getElementById('manualName');const name=el.value.trim();
+    if(!name){toast('กรุณาใส่ชื่อเล่น');return;}
+    action('ADD_QUEUE',{name:name},'เพิ่มคิวแล้ว');el.value='';
+  }
+  function callNext(){ action('CALL_NEXT',{},'เรียกคิวแล้ว'); }
+  function finishAndCall(){ if(confirm('จบเกมนี้และเรียกคิวถัดไป?')) action('FINISH_CALL_NEXT',{},'จบเกมและเรียกคิวถัดไปแล้ว'); }
+  function startCalled(){ action('START',{id:state.called.id},'เริ่มเล่นแล้ว'); }
+  function skipCalled(){ if(confirm('ข้ามคิว '+state.called.queueNo+' และเรียกคิวถัดไป?')) action('SKIP',{id:state.called.id},'ข้ามคิวและเรียกคิวถัดไปแล้ว'); }
+  function skip(id){ if(confirm('ข้ามคิวนี้?')) action('SKIP',{id:id},'ข้ามคิวแล้ว'); }
+  function cancelQ(id){ if(confirm('ยกเลิกคิวนี้?')) action('CANCEL',{id:id},'ยกเลิกคิวแล้ว'); }
+  function moveEnd(id){ if(confirm('ย้ายคิวนี้ไปท้ายแถว?')) action('MOVE_END',{id:id},'ย้ายไปท้ายคิวแล้ว'); }
+
+  function formatSec(sec){
+    sec=Math.max(0,Number(sec||0)); const m=Math.floor(sec/60), s=sec%60;
+    return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+  }
+
+  function error(e){
+    busy=false;
+    const msg=e&&e.message?e.message:'เกิดข้อผิดพลาด';
+    toast(msg);
+  }
+
+  function toast(msg){
+    const el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');
+    setTimeout(()=>el.classList.remove('show'),2500);
+  }
+  document.getElementById('manualName').addEventListener('keydown',e=>{if(e.key==='Enter')addManual();});
+
+  refresh();
+</script>
+<div style="position:fixed;right:10px;bottom:8px;color:#33443a;font:10px system-ui">V1.7.5 CALL TIMER + MOBILE</div>
+</body>
+</html>
