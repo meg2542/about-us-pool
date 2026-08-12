@@ -7,6 +7,9 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="ABOUT US POOL">
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://script.googleusercontent.com">
+  <link rel="preconnect" href="https://cdn.onesignal.com">
   <link rel="manifest" href="./manifest.json">
   <link rel="apple-touch-icon" href="./icon-192.png">
   <title>ABOUT US POOL QUEUE</title>
@@ -354,7 +357,7 @@
       </section>
     </main>
 
-    <div class="footer">ABOUT US • POOL QUEUE V1.7.5 CALL TIMER + MOBILE</div>
+    <div class="footer">ABOUT US • POOL QUEUE V1.7.6 FAST RESPONSE</div>
   </div>
   <div id="toast" class="toast"></div>
 
@@ -377,6 +380,7 @@
   let pushBoundIdentity = '';
   let refreshGeneration = 0;
   let hiddenAt = 0;
+  let resumeTimer = null;
 
   function getToken(){
     let t = localStorage.getItem('aboutus_pool_token');
@@ -707,10 +711,12 @@
 
   function resumeRefresh(){
     clearTimeout(timer);
-    // Ignore any JSONP request that was frozen while iOS suspended the app.
+    clearTimeout(resumeTimer);
+    // iOS may fire visibilitychange + pageshow + focus together.
+    // Debounce them so returning to the app causes one immediate refresh, not 2–3.
     refreshInFlight=false;
     ++refreshGeneration;
-    setTimeout(function(){refresh(true)},50);
+    resumeTimer=setTimeout(function(){refresh(true)},60);
     updatePushUi();
   }
 
@@ -804,7 +810,7 @@
       lastStatus=mine.status;
     }
 
-    const refreshMs = mine ? (mine.status==='CALLED' ? 1500 : 2500) : 3000;
+    const refreshMs = mine ? (mine.status==='CALLED' ? 1000 : 1800) : 2500;
     scheduleRefresh(refreshMs);
   }
 
@@ -820,13 +826,17 @@
 
     busy=true;setBusy(true);
     try{
-      if(pushReady&&oneSignalRef&&oneSignalRef.Notifications.permission&&oneSignalRef.User.PushSubscription.optedIn){
-        await registerPushSubscription();
-      }
+      // JOIN is the priority. Do not make the customer wait for a separate
+      // push-registration round trip before receiving the queue number.
       const s=await apiWrite({route:'customerAction',clientToken:getToken(),action:'JOIN',name:name});
       render(s);
-      await syncPushIdentity();
       toast('รับคิวเรียบร้อย 🎱');
+
+      // Bind/register Push after the queue is already visible. Best-effort only.
+      syncPushIdentity();
+      if(pushReady&&oneSignalRef&&oneSignalRef.Notifications.permission&&oneSignalRef.User.PushSubscription.optedIn){
+        registerPushSubscription();
+      }
     }catch(e){serverError(e)}
   }
 
