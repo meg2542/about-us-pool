@@ -2,6 +2,9 @@
 <html lang="th">
 <head>
     <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,viewport-fit=cover">
+    <link rel="preconnect" href="https://script.google.com">
+    <link rel="preconnect" href="https://script.googleusercontent.com">
   <style>
     :root{
       --bg:#07090c;--card:#11161c;--line:#27323d;--text:#f7fafc;--muted:#91a0ae;
@@ -18,7 +21,7 @@
     .stat{background:#0a0e12;border:1px solid #222d37;border-radius:15px;padding:13px}
     .stat span{font-size:12px;color:var(--muted)}.stat strong{display:block;font-size:23px;margin-top:2px}
     button{border:0;border-radius:12px;padding:11px 13px;font-weight:800;cursor:pointer;font-size:14px}
-    button:disabled{opacity:.45}.primary{background:#39d873;color:#04130a}.secondary{background:#1b2630;color:#e5edf4;border:1px solid #33424f}
+    button:disabled{opacity:.45}body.busy button{pointer-events:none;opacity:.72}.primary{background:#39d873;color:#04130a}.secondary{background:#1b2630;color:#e5edf4;border:1px solid #33424f}
     .danger{background:#351518;color:#ffb4ba;border:1px solid #6f2930}.warning{background:#3b2c09;color:#ffd86e;border:1px solid #725819}
     .blue{background:#102c3a;color:#9ee4ff;border:1px solid #24566d}
     .full{width:100%;padding:14px}.row{display:flex;gap:8px;flex-wrap:wrap}.row>*{flex:1}
@@ -180,15 +183,47 @@
   let state = null;
   let timer = null;
   let busy = false;
+  let refreshInFlight = false;
+  let refreshGeneration = 0;
+  let adminClockTimer = null;
 
-  function refresh(){
+  function scheduleRefresh(ms){
     clearTimeout(timer);
-    apiCall({route:'adminState'}).then(render).catch(error);
+    timer=setTimeout(function(){refresh(false)}, Math.max(500, Number(ms||1800)));
+  }
+
+  function refresh(force){
+    clearTimeout(timer);
+    if(busy && !force){
+      scheduleRefresh(500);
+      return;
+    }
+    if(refreshInFlight && !force) return;
+
+    const generation=++refreshGeneration;
+    refreshInFlight=true;
+    apiCall({route:'adminState'})
+      .then(function(s){
+        if(generation!==refreshGeneration) return;
+        refreshInFlight=false;
+        render(s);
+      })
+      .catch(function(e){
+        if(generation!==refreshGeneration) return;
+        refreshInFlight=false;
+        error(e);
+        scheduleRefresh(2000);
+      });
   }
 
   function action(name, payload, successMsg){
     if(busy) return;
+    clearTimeout(timer);
+    // Ignore an older polling response if it returns while this action is running.
+    ++refreshGeneration;
+    refreshInFlight=false;
     busy=true;
+    document.body.classList.add('busy');
 
     const params = {route:'adminAction', action:name};
     const p = payload || {};
@@ -197,14 +232,21 @@
     apiWrite(params)
       .then(function(s){
         busy=false;
+        document.body.classList.remove('busy');
         render(s);
         if(successMsg) toast(successMsg);
+
+        // Do not block Admin UI on OneSignal. Queue state is already committed.
+        if(s && s.pushTargetId){
+          apiCall({route:'notifyCalled',id:s.pushTargetId})
+            .catch(function(e){ console.warn('Push notify failed',e); });
+        }
       })
       .catch(error);
   }
 
   function render(s){
-    busy=false; state=s;
+    busy=false; document.body.classList.remove('busy'); state=s;
     const ps=document.getElementById('pushAdminStatus');
     if(ps){
       ps.textContent='Push: '+(s.pushConfigured?'พร้อม':'ยังไม่ตั้งค่า');
@@ -281,8 +323,43 @@
       });
     }
 
-    clearTimeout(timer);
-    timer=setTimeout(refresh, 2000);
+    startAdminClock();
+
+    // Poll faster only while something is actively changing.
+    const refreshMs = s.called ? 1000 : ((s.playing || s.waiting.length) ? 1500 : 2500);
+    scheduleRefresh(refreshMs);
+  }
+
+  function startAdminClock(){
+    clearInterval(adminClockTimer);
+    if(!state || !state.called || !state.called.callDeadlineAt) return;
+
+    const deadline=Date.parse(state.called.callDeadlineAt);
+    if(!Number.isFinite(deadline)) return;
+
+    function draw(){
+      if(!state || !state.called) return;
+      const remain=Math.max(0,Math.ceil((deadline-Date.now())/1000));
+      const overdue=remain===0;
+      const acked=!!state.called.acknowledgedAt;
+      const card=document.getElementById('calledCard');
+      const ack=document.getElementById('calledAck');
+      const remainEl=document.getElementById('callRemain');
+
+      if(overdue){
+        card.classList.add('overdue');
+        ack.classList.add('overdue');
+        remainEl.textContent='เกินเวลา';
+        ack.textContent=acked
+          ? '⚠ เกิน 5 นาทีหลังลูกค้ากด “กำลังไป” — ให้พนักงานตัดสินใจเอง'
+          : '⚠ เกิน 3 นาทีแล้วยังไม่กด “กำลังไป” — ให้พนักงานตัดสินใจเอง';
+      }else{
+        remainEl.textContent='เหลือ '+formatSec(remain);
+      }
+    }
+
+    draw();
+    adminClockTimer=setInterval(draw,1000);
   }
 
   function makeBtn(text, cls, fn){
@@ -323,8 +400,10 @@
 
   function error(e){
     busy=false;
+    document.body.classList.remove('busy');
     const msg=e&&e.message?e.message:'เกิดข้อผิดพลาด';
     toast(msg);
+    scheduleRefresh(900);
   }
 
   function toast(msg){
@@ -333,8 +412,8 @@
   }
   document.getElementById('manualName').addEventListener('keydown',e=>{if(e.key==='Enter')addManual();});
 
-  refresh();
+  refresh(true);
 </script>
-<div style="position:fixed;right:10px;bottom:8px;color:#33443a;font:10px system-ui">V1.7.5 CALL TIMER + MOBILE</div>
+<div style="position:fixed;right:10px;bottom:8px;color:#33443a;font:10px system-ui">V1.7.6 FAST RESPONSE</div>
 </body>
 </html>
